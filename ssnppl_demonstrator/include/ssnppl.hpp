@@ -72,6 +72,7 @@ private:
     // Serial Port
     SerialPort main_channel;
     SerialPort lband_channel;
+    SerialPort spartn_input_channel;
 
     // Ephemeris GGA thread
     void read_ephemeris_gga_data();
@@ -84,6 +85,12 @@ private:
     std::thread read_lband_data_thread;
     std::queue<std::vector<uint8_t>> lband_queue;
     std::mutex lband_queue_mutex;
+
+    // SPARTN Serial input thread
+    void read_spartn_input_data();
+    std::thread read_spartn_input_data_thread;
+    std::queue<std::vector<uint8_t>> spartn_input_queue;
+    std::mutex spartn_input_queue_mutex;
 
     // PPL thread
     void handle_data();
@@ -100,6 +107,7 @@ private:
 
     ssnppl_error init_main_comm();
     ssnppl_error init_lband_comm();
+    ssnppl_error init_serial();
 
     // MQTT
     struct mosquitto *mosq_client = nullptr;

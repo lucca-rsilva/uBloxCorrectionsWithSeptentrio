@@ -75,6 +75,9 @@ struct ProgramOptions {
     std::string mqtt_server;
     std::string region;
 
+    // Serial SPARTN Config
+    std::string spartn_serial_config;
+
     // Comms
     std::string receiver_main_port;
     std::string receiver_lband_port;

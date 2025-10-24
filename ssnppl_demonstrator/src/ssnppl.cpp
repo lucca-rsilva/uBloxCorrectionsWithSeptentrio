@@ -62,6 +62,10 @@ ssnppl_error Ssnppl_demonstrator::init(int argc, char *argv[])
     {
         return ssnppl_error::FAIL;
     }
+    if (init_serial() != ssnppl_error::SUCCESS)
+    {
+        return ssnppl_error::FAIL;
+    }
    init_receiver();
 
    
@@ -138,8 +142,31 @@ ssnppl_error Ssnppl_demonstrator::init_lband_comm()
     return ssnppl_error::SUCCESS;
 }
 
+ssnppl_error Ssnppl_demonstrator::init_serial()
+{
+
+    if (options.mode == "Serial")
+    {
+        std::vector<std::string> usb_params = split(options.spartn_serial_config, '@');
+        std::string usb_port = usb_params[0];
+        unsigned int usb_baudrate = std::stoi(usb_params[1]);
+
+        // Create serial port object and opten it
+        std::cout << "Opening SPARTN input serial port ...\n"
+                  << std::endl;
+        spartn_input_channel.open_serial_port(usb_port, usb_baudrate);
+    }
+
+    return ssnppl_error::SUCCESS;
+}
+
 ssnppl_error Ssnppl_demonstrator::init_mqtt()
 {
+    if (options.mode == "Serial") // if Serial mode, don't connect to mqtt
+    {
+        return ssnppl_error::SUCCESS;
+    }
+
     // Auth files path information
     const std::string caFile = options.mqtt_auth_folder + "/AmazonRootCA1.pem";
     const std::string certFile = options.mqtt_auth_folder + "/device-" + options.client_id + "-pp-cert.crt";
@@ -388,7 +415,7 @@ void Ssnppl_demonstrator::handle_data()
             ephemeris_gga_queue.pop();
             
             // parse msg to found lat and lon 
-            if (userData.localized &&( options.mode == "Dual" || options.mode == "Ip") ){
+            if (userData.localized &&( options.mode == "Dual" || options.mode == "Ip" || options.mode == "Serial") ){
                  std::vector<std::string> parsedGGA = split(std::string(msg.begin(),msg.end()),',');
                 if(parsedGGA.at(0) == "$GPGGA" )
             {
@@ -446,6 +473,57 @@ void Ssnppl_demonstrator::handle_data()
             lband_queue.pop();
         }
     }
+
+    // Handle Incoming SPARTN serial
+    if (options.mode == "Serial")
+    {
+        std::lock_guard<std::mutex> mutex(spartn_input_queue_mutex);
+        if (!spartn_input_queue.empty())
+        {
+            std::vector<uint8_t> msg = spartn_input_queue.front();
+            // if (options.SPARTN_Logging != "none")
+            //     SPARTN_file_Lb.write((char *)msg.data(), msg.size()).flush();
+
+            ePPL_ReturnStatus ePPLRet = PPL_SendSpartn(msg.data(), msg.size());
+            if (ePPLRet != ePPL_Success)
+            {
+                std::cout << "FAILED TO SEND SPARTN SERIAL INPUT DATA:  " << ePPLRet << std::endl;
+            }
+            else
+            {
+                std::array<uint8_t, PPL_MAX_RTCM_BUFFER> rtcm_buffer;
+                uint32_t rtcm_size = 0;
+
+                PPL_GetRTCMOutput(rtcm_buffer.data(), PPL_MAX_RTCM_BUFFER, &rtcm_size);
+                if (rtcm_size>0)
+                {
+                    std::unique_lock<std::mutex> mutex(rtcm_queue_mutex);
+                    rtcm_queue.push(std::vector<uint8_t>(rtcm_buffer.begin(), rtcm_buffer.begin() + rtcm_size));
+                    mutex.unlock();
+                    cv_rtcm.notify_one();
+                }
+            }
+            spartn_input_queue.pop();
+
+            // ePPL_ReturnStatus ePPLRet = PPL_SendSpartn(mqtt_data.data(), mqtt_data.size());
+            // if ((ePPLRet) == ePPL_Success)
+            // {
+            //     ePPL_ReturnStatus ePPLRet = PPL_GetRTCMOutput(rtcm_buffer.data(), PPL_MAX_RTCM_BUFFER, &rtcm_size);
+            //     if (rtcm_size>0)
+            //     {
+            //         std::unique_lock<std::mutex> lock(rtcm_queue_mutex);
+            //         rtcm_queue.push(std::vector<uint8_t>(rtcm_buffer.begin(), rtcm_buffer.begin() + rtcm_size));
+            //         lock.unlock();
+            //         cv_rtcm.notify_one();
+            //     }
+
+            // }
+            // else
+            // {
+            //     std::cout << "FAILED TO SEND IP DATA:  " << ePPLRet << std::endl;
+            // }
+        }
+    }
 }
 
 ssnppl_error Ssnppl_demonstrator::init_ppl()
@@ -456,7 +534,7 @@ ssnppl_error Ssnppl_demonstrator::init_ppl()
     ePPL_ReturnStatus ePPLRet;
 
     // Initialize PointPerfect Library
-    if (options.mode == "Ip")
+    if (options.mode == "Ip" || options.mode == "Serial")
     {
         ePPLRet = PPL_Initialize(PPL_CFG_ENABLE_IP_CHANNEL);
     }
@@ -573,11 +651,14 @@ void Ssnppl_demonstrator::init_receiver()
 
     if (options.mode == "Lb" || options.mode == "Dual")
         read_lband_data_thread = std::thread(&Ssnppl_demonstrator::read_lband_data, this);
+
+    if (options.mode == "Serial")
+        read_spartn_input_data_thread = std::thread(&Ssnppl_demonstrator::read_spartn_input_data, this);  
 }
 
 void Ssnppl_demonstrator::write_rtcm()
 {
-    if (options.mode != "Ip")
+    if (options.mode != "Ip" && options.mode != "Serial")
     {
         // Wait to have frq before entering loop if LBand
         while (!update_receiver)
@@ -657,6 +738,28 @@ void Ssnppl_demonstrator::read_lband_data()
     }
 }
 
+void Ssnppl_demonstrator::read_spartn_input_data()
+{
+    while (thread_running)
+    {
+        size_t size = spartn_input_channel.sync_read();
+
+        uint8_t *buff = spartn_input_channel.getSyncBuffer();
+
+        if (!is_empty(buff, size))
+        {
+            std::lock_guard<std::mutex> mutex(spartn_input_queue_mutex);
+
+            std::vector<uint8_t> spartn_input_vector(buff, buff + size);
+            spartn_input_queue.push(spartn_input_vector);
+        }
+
+        spartn_input_channel.clearSyncBuffer();
+        cv_incoming_data.notify_all();
+        std::this_thread::sleep_for(std::chrono::milliseconds(300));
+    }
+}
+
 void Ssnppl_demonstrator::read_ephemeris_gga_data()
 {
     while (thread_running)
@@ -698,7 +801,7 @@ void Ssnppl_demonstrator::init_SPARTN_LOG()
     {
 
         // Depending on the program logic mode, open file(s)
-        if (options.mode == "Ip")
+        if (options.mode == "Ip" || options.mode == "Serial")
             SPARTN_file_Ip.open(options.SPARTN_Logging + "_Ip.bin", std::ios::binary);
         else if (options.mode == "Lb")
             SPARTN_file_Lb.open(options.SPARTN_Logging + "_Lb.bin", std::ios::binary);
@@ -727,6 +830,7 @@ Ssnppl_demonstrator::~Ssnppl_demonstrator()
 
     read_ephemeris_gga_data_thread.join();
     read_lband_data_thread.join();
+    read_spartn_input_data_thread.join();
     write_rtcm_thread.join();
 }
 
