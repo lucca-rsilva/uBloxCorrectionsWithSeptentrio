@@ -69,10 +69,10 @@ ProgramOptions ParseProgramOptions(int argc, char* argv[]) {
         // Localized Distribution Config 
         ("localized", po::value<bool>(&options.localized)->default_value(false),                                "localized                  Optional | Use Localized services , By Default: false")
         ("tile_level",po::value<int>(&options.tile_level)->default_value(2),                                    "tile_level:                Optional | Tile level for localized service (0,1,2) , By default : 2 ")
-        ("distance",po::value<int>(&options.distance)->default_value(10000),                                    "distance:                  Optional | The distance threshold [m] for recalculating tile and node , By default : 10000 ");
+        ("distance",po::value<int>(&options.distance)->default_value(10000),                                    "distance:                  Optional | The distance threshold [m] for recalculating tile and node , By default : 10000 ")
 
         // SPARTN Input from Serial Config
-        ("spartn_serial_config", po::value<std::string>(&options.spartn_serial_config)->default_value("none"),                "spartn_serial_config:             Optional | Port where unencrypted SPARTN messages are received. Format: port@baudrate.")
+        ("spartn_serial_config", po::value<std::string>(&options.spartn_serial_config)->default_value("none"),                "spartn_serial_config:             Optional | Port where unencrypted SPARTN messages are received. Format: port@baudrate.");
         
     po::variables_map vm;
 
@@ -133,6 +133,6 @@ void showOptions(const ProgramOptions &options) {
     std::cout << "  *region:                " << options.region << std::endl;
 
     std::cout << "\nSPARTN INPUT FROM SERIAL:\n" << std::endl;
-    std::cout << "  *spartn_serial_config:         " << options.spartn_serial << std::endl;
+    std::cout << "  *spartn_serial_config:         " << options.spartn_serial_config << std::endl;
     std::cout << "\n##########################################################################\n" << std::endl;
 }  
