@@ -60,6 +60,8 @@ public:
     void close_serial_port(void);
 
     void async_read_some(void);
+    std::string take_serial_data(void);
+
     size_t sync_read();
 
     void sync_write(const std::string &data);

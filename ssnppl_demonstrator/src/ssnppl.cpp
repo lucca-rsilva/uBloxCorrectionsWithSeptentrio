@@ -636,7 +636,11 @@ void Ssnppl_demonstrator::init_receiver()
         read_lband_data_thread = std::thread(&Ssnppl_demonstrator::read_lband_data, this);
 
     if (options.mode == "Serial")
+    {
         read_spartn_input_data_thread = std::thread(&Ssnppl_demonstrator::read_spartn_input_data, this);  
+        
+        spartn_input_channel.async_read_some(); // starts the asynchronous cycle
+    }
 }
 
 void Ssnppl_demonstrator::write_rtcm()
@@ -725,19 +729,7 @@ void Ssnppl_demonstrator::read_spartn_input_data()
 {
     while (thread_running)
     {
-        // Copy data atomically
-        std::string local_copy;
-        {
-            std::lock_guard<boost::mutex> lock(spartn_input_channel.mutex); 
-            
-            if (!spartn_input_channel.serial_read_data.empty() && spartn_input_channel.serial_data_read_complete)
-            {
-                local_copy = spartn_input_channel.serial_read_data;
-                spartn_input_channel.serial_read_data.clear();
-                spartn_input_channel.serial_data_read_complete = false;
-            }
-        }
-
+        std::string local_copy = spartn_input_channel.take_serial_data();
         if (!local_copy.empty())
         {
             // Push into queue
@@ -757,6 +749,32 @@ void Ssnppl_demonstrator::read_spartn_input_data()
         }
     }
 }
+
+// void Ssnppl_demonstrator::read_spartn_input_data()
+// {
+//     while (thread_running)
+//     {
+//         size_t size = spartn_input_channel.sync_read();
+
+//         uint8_t *buff = spartn_input_channel.getSyncBuffer();
+
+//         std::cout << "Read size: " << size;
+//         if (size > 0) std::cout << ", first byte: " << (int)buff[0];
+//         std::cout << std::endl;
+
+//         if (!is_empty(buff, size))
+//         {
+//             std::lock_guard<std::mutex> mutex(spartn_input_queue_mutex);
+
+//             std::vector<uint8_t> spartn_input_vector(buff, buff + size);
+//             spartn_input_queue.push(spartn_input_vector);
+//         }
+
+//         spartn_input_channel.clearSyncBuffer();
+//         cv_incoming_data.notify_all();
+//         std::this_thread::sleep_for(std::chrono::milliseconds(100));
+//     }
+// }
 
 void Ssnppl_demonstrator::read_ephemeris_gga_data()
 {

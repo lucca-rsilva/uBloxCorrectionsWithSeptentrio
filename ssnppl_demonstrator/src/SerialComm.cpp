@@ -189,6 +189,15 @@ void SerialPort::data_received(const boost::system::error_code& error, size_t by
     return;
 }
 
+std::string SerialPort::take_serial_data()
+{
+    boost::mutex::scoped_lock lock(mutex);
+    std::string copy = serial_read_data;
+    serial_read_data.clear();
+    serial_data_read_complete = false;
+    return copy;
+}
+
 size_t SerialPort::sync_read()
 {
 
