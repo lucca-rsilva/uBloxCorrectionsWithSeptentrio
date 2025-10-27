@@ -481,8 +481,9 @@ void Ssnppl_demonstrator::handle_data()
         if (!spartn_input_queue.empty())
         {
             std::vector<uint8_t> msg = spartn_input_queue.front();
-            // if (options.SPARTN_Logging != "none")
-            //     SPARTN_file_Lb.write((char *)msg.data(), msg.size()).flush();
+            std::cout << "\nNew SPARTN Serial Message reveiced." << std::endl;
+            std::cout << "  Message Size: " << msg.size() << std::endl;
+            std::cout << std::endl;
 
             ePPL_ReturnStatus ePPLRet = PPL_SendSpartn(msg.data(), msg.size());
             if (ePPLRet != ePPL_Success)
@@ -504,24 +505,6 @@ void Ssnppl_demonstrator::handle_data()
                 }
             }
             spartn_input_queue.pop();
-
-            // ePPL_ReturnStatus ePPLRet = PPL_SendSpartn(mqtt_data.data(), mqtt_data.size());
-            // if ((ePPLRet) == ePPL_Success)
-            // {
-            //     ePPL_ReturnStatus ePPLRet = PPL_GetRTCMOutput(rtcm_buffer.data(), PPL_MAX_RTCM_BUFFER, &rtcm_size);
-            //     if (rtcm_size>0)
-            //     {
-            //         std::unique_lock<std::mutex> lock(rtcm_queue_mutex);
-            //         rtcm_queue.push(std::vector<uint8_t>(rtcm_buffer.begin(), rtcm_buffer.begin() + rtcm_size));
-            //         lock.unlock();
-            //         cv_rtcm.notify_one();
-            //     }
-
-            // }
-            // else
-            // {
-            //     std::cout << "FAILED TO SEND IP DATA:  " << ePPLRet << std::endl;
-            // }
         }
     }
 }
@@ -745,6 +728,10 @@ void Ssnppl_demonstrator::read_spartn_input_data()
         size_t size = spartn_input_channel.sync_read();
 
         uint8_t *buff = spartn_input_channel.getSyncBuffer();
+
+        std::cout << "Read size: " << size;
+        if (size > 0) std::cout << ", first byte: " << (int)buff[0];
+        std::cout << std::endl;
 
         if (!is_empty(buff, size))
         {
