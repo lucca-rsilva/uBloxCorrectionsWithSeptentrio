@@ -743,7 +743,7 @@ void Ssnppl_demonstrator::read_spartn_input_data()
 
         spartn_input_channel.clearSyncBuffer();
         cv_incoming_data.notify_all();
-        std::this_thread::sleep_for(std::chrono::milliseconds(300));
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
 }
 
