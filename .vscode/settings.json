@@ -51,6 +51,7 @@
         "charconv": "cpp",
         "csignal": "cpp",
         "forward_list": "cpp",
-        "iomanip": "cpp"
+        "iomanip": "cpp",
+        "atomic": "cpp"
     }
 }
