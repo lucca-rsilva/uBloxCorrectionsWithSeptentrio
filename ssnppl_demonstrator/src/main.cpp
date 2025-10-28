@@ -188,7 +188,7 @@ int main() {
             if (ret != ePPL_Success) {
                 std::cout << "FAILED TO SEND SPARTN SERIAL INPUT DATA: " << ret << std::endl;
             } else {
-                std::cout << "\nNew SPARTN Serial Message received. Message Size: " << msg.size() << std::endl;
+                std::cout << "New SPARTN Serial Message received. Message Size: " << msg.size() << std::endl;
                 std::array<uint8_t, PPL_MAX_RTCM_BUFFER> rtcm_buf;
                 uint32_t rtcm_size = 0;
                 PPL_GetRTCMOutput(rtcm_buf.data(), PPL_MAX_RTCM_BUFFER, &rtcm_size);
