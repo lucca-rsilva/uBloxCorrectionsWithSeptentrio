@@ -86,8 +86,9 @@ int open_serial(const char* device, int baudrate) {
     tty.c_cflag &= ~CSIZE;
     tty.c_cflag |= CS8;
 
-    tty.c_cc[VMIN] = 1;    // wait until at least 1 byte is available
-    tty.c_cc[VTIME] = 1;   // timeout in tenths of a second (0.1s)
+    // --- Non-blocking read with timeout ---
+    tty.c_cc[VMIN] = 0;      // 0 bytes minimum
+    tty.c_cc[VTIME] = 2;     // timeout in tenths of a second (0.2s here)
 
 
     tcsetattr(fd, TCSANOW, &tty);
@@ -108,7 +109,8 @@ void thread_read_serial(const char* device, int baudrate, SafeQueue<std::vector<
             std::vector<uint8_t> data(buf, buf + n);
             queue->push(std::move(data));
         } else {
-            std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        //     std::this_thread::sleep_for(std::chrono::milliseconds(10));
+            ;
         }
     }
 
