@@ -165,7 +165,7 @@ int main() {
     }
 
     std::thread t_sept(thread_read_serial, "/dev/ttyACM0", B115200, &queue_septentrio);
-    std::thread t_spartn(thread_read_serial, "/dev/ttyUSB0", B9600, &queue_spartn);
+    std::thread t_spartn(thread_read_serial, "/dev/ttyUSB0", B115200, &queue_spartn);
     std::thread t_rtcm_writer(thread_write_rtcm); // uses the same serial as t_sept
 
     while (running) {
