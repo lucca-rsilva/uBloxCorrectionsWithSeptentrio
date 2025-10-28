@@ -188,6 +188,7 @@ int main() {
                 PPL_GetRTCMOutput(rtcm_buf.data(), PPL_MAX_RTCM_BUFFER, &rtcm_size);
 
                 if (rtcm_size > 0) {
+                    std::cout << "\nNew RTCM generated. Size: " << rtcm_size << std::endl;
                     queue_rtcm.push(std::vector<uint8_t>(
                         rtcm_buf.begin(), rtcm_buf.begin() + rtcm_size));
                 }
