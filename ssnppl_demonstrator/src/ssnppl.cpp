@@ -733,14 +733,23 @@ void Ssnppl_demonstrator::read_spartn_input_data()
         if (!local_copy.empty())
         {
             // Push into queue
-            std::lock_guard<std::mutex> queue_lock(spartn_input_queue_mutex);
+            bool locked = spartn_input_queue_mutex.try_lock();
+            if (!locked)
+            {
+                std::cout << "[QUEUE] Waiting for queue mutex..." << std::endl;
+                spartn_input_queue_mutex.lock();
+                std::cout << "[QUEUE] Acquired queue mutex after wait." << std::endl;
+            }
+
             std::vector<uint8_t> data_vec(local_copy.begin(), local_copy.end());
             spartn_input_queue.push(data_vec);
-            cv_incoming_data.notify_all();
+            spartn_input_queue_mutex.unlock();
 
             std::cout << "[DEBUG] Pushed " << data_vec.size() 
-                      << " bytes to queue. Queue size: " 
-                      << spartn_input_queue.size() << std::endl;
+                << " bytes to queue. Queue size: " 
+                << spartn_input_queue.size() << std::endl;
+            
+            cv_incoming_data.notify_all();
         }
         else
         {

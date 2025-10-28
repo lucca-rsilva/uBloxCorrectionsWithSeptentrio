@@ -84,6 +84,7 @@ void SerialPort::async_read_some (void)
         This ensures that only one thread can execute the code protected by the mutex at a time. 
         When the lock object goes out of scope, the mutex is automatically released, allowing other threads to acquire it.
     */
+    std::cout << "[ASYNC] Enter async_read_some()" << std::endl;
     boost::mutex::scoped_lock lock (mutex); // prevent multiple threads
 
     std::cout << "Asynchronous reading started." << std::endl; 
@@ -92,7 +93,7 @@ void SerialPort::async_read_some (void)
     {
         if (!serial_port->is_open())
         {
-            std::cout << "The serial port is closed when reading asynchronously. Throwing exception -2." << std::endl; 
+            std::cout << "[ASYNC] Port closed! Aborting async_read_some." << std::endl;
             throw -2;
         }
 
@@ -104,6 +105,8 @@ void SerialPort::async_read_some (void)
                 boost::asio::placeholders::bytes_transferred
             )
         );
+
+        std::cout << "[ASYNC] async_read_some() scheduled successfully." << std::endl;
         
         /* 
             boost::thread t(boost::bind(&boost::asio::io_service::run, &io_service));
@@ -117,10 +120,12 @@ void SerialPort::async_read_some (void)
             The boost::thread constructor creates a new thread of execution that runs the run function with the io_service object as an argument.   
         */
         boost::thread t(boost::bind(&boost::asio::io_service::run, &io_service));
+
+        std::cout << "[ASYNC] io_service::run() scheduled successfully." << std::endl;
     }
     catch (const std::exception &e)
     {
-        std::cout << "e.what() = " << e.what();
+        std::cout << "[ASYNC] Exception: " << e.what() << std::endl;
         throw -1;
     }
 
@@ -142,25 +147,32 @@ void SerialPort::data_received(const boost::system::error_code& error, size_t by
         This ensures that only one thread can execute the code protected by the mutex at a time. 
         When the lock object goes out of scope, the mutex is automatically released, allowing other threads to acquire it.
     */
-    boost::mutex::scoped_lock lock (mutex); // prevent multiple threads
+    std::cout << "[DATA_RECEIVED] Enter (" << bytes_transferred << " bytes)" << std::endl;
 
-    //std::cout << "Asynchronous callback started." << std::endl; 
+    bool locked = mutex.try_lock();
+    if (!locked) {
+        std::cout << "[DATA_RECEIVED] Waiting for mutex..." << std::endl;
+        mutex.lock();
+        std::cout << "[DATA_RECEIVED] Acquired mutex after wait." << std::endl;
+    } else {
+        std::cout << "[DATA_RECEIVED] Acquired mutex immediately." << std::endl;
+    }
 
     try
     {
         // determine whether the serial_port object has been initialized or if it is in a valid state and check if serial port is opened.
         if (serial_port.get() == NULL || !serial_port->is_open())
         {
-            std::cout << "Serial port is not open" << std::endl; 
+            std::cout << "[DATA_RECEIVED] Serial port is not open." << std::endl;
             throw -2;
         }
         if (error) 
         {            
-            std::cout << "There was an error while checking the serial port." << std::endl;
-            std::cout << "error.message() >> " << error.message().c_str() << std::endl;
+            std::cout << "[DATA_RECEIVED] Error: " << error.message() << std::endl;
             throw -3;
         }  
-                 
+          
+        std::cout << "[DATA_RECEIVED] Appending " << bytes_transferred << " bytes to buffer." << std::endl;
         for (unsigned int i = 0; i < bytes_transferred; ++i) {
             serial_read_data += read_buffer[i];
         }     
@@ -169,14 +181,19 @@ void SerialPort::data_received(const boost::system::error_code& error, size_t by
         //std::cout << "\nSerial Read Data:\n" << serial_read_data  << std::endl;
 
         serial_data_read_complete = true;
+        std::cout << "[DATA_RECEIVED] Buffer length now: " << serial_read_data.size() << std::endl;
     }
     catch (const std::exception &e)
     {
-        std::cout << "e.what() = " << e.what();
-        throw -1;
+        std::cout << "[DATA_RECEIVED] Exception: " << e.what() << std::endl;
+        // throw -1;
     }
 
+    mutex.unlock();
+    std::cout << "[DATA_RECEIVED] Mutex released." << std::endl;
+
     // prevent io_service from returning due to lack of work    
+    std::cout << "[DATA_RECEIVED] Scheduling next async_read_some()" << std::endl;
     serial_port->async_read_some(
         boost::asio::buffer(read_buffer, MAX_RCVR_DATA),
         boost::bind(
@@ -186,6 +203,7 @@ void SerialPort::data_received(const boost::system::error_code& error, size_t by
         )
     );
 
+    std::cout << "[DATA_RECEIVED] Exit." << std::endl;
     return;
 }
 
