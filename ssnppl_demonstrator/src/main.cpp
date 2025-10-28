@@ -97,14 +97,14 @@ void thread_read_serial(const char* device, int baudrate, SafeQueue<std::vector<
     int fd = open_serial(device, baudrate);
     if (fd < 0) return;
 
-    uint8_t buf[512];
+    uint8_t buf[8092];
     while (running) {
         int n = read(fd, buf, sizeof(buf));
         if (n > 0) {
             std::vector<uint8_t> data(buf, buf + n);
             queue->push(std::move(data));
         } else {
-            std::this_thread::sleep_for(std::chrono::milliseconds(10));
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
         }
     }
 
@@ -182,7 +182,7 @@ int main() {
             if (ret != ePPL_Success) {
                 std::cout << "FAILED TO SEND SPARTN SERIAL INPUT DATA: " << ret << std::endl;
             } else {
-                std::cout << "\nNew SPARTN Serial Message reveiced. Message Size: " << msg.size() << std::endl;
+                std::cout << "\nNew SPARTN Serial Message received. Message Size: " << msg.size() << std::endl;
                 std::array<uint8_t, PPL_MAX_RTCM_BUFFER> rtcm_buf;
                 uint32_t rtcm_size = 0;
                 PPL_GetRTCMOutput(rtcm_buf.data(), PPL_MAX_RTCM_BUFFER, &rtcm_size);
