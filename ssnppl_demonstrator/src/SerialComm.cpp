@@ -149,47 +149,41 @@ void SerialPort::data_received(const boost::system::error_code& error, size_t by
     */
     std::cout << "[DATA_RECEIVED] Enter (" << bytes_transferred << " bytes)" << std::endl;
 
-    bool locked = mutex.try_lock();
-    if (!locked) {
-        std::cout << "[DATA_RECEIVED] Waiting for mutex..." << std::endl;
-        mutex.lock();
-        std::cout << "[DATA_RECEIVED] Acquired mutex after wait." << std::endl;
-    } else {
-        std::cout << "[DATA_RECEIVED] Acquired mutex immediately." << std::endl;
+    // Handle errors first, before any locks
+    if (error) 
+    {            
+        std::cout << "[DATA_RECEIVED] Error: " << error.message() << std::endl;
+        throw -3;
     }
 
-    try
     {
-        // determine whether the serial_port object has been initialized or if it is in a valid state and check if serial port is opened.
-        if (serial_port.get() == NULL || !serial_port->is_open())
+        boost::mutex::scoped_lock lock(mutex);
+        std::cout << "[DATA_RECEIVED] Acquired mutex." << std::endl;
+
+        try
         {
-            std::cout << "[DATA_RECEIVED] Serial port is not open." << std::endl;
-            throw -2;
+            // determine whether the serial_port object has been initialized or if it is in a valid state and check if serial port is opened.
+            if (serial_port.get() == NULL || !serial_port->is_open())
+            {
+                std::cout << "[DATA_RECEIVED] Serial port is not open." << std::endl;
+                throw -2;
+            }
+            
+            std::cout << "[DATA_RECEIVED] Appending " << bytes_transferred << " bytes to buffer." << std::endl;
+            for (unsigned int i = 0; i < bytes_transferred; ++i) {
+                serial_read_data += read_buffer[i];
+            }     
+
+            serial_data_read_complete = true;
+            std::cout << "[DATA_RECEIVED] Buffer length now: " << serial_read_data.size() << std::endl;
         }
-        if (error) 
-        {            
-            std::cout << "[DATA_RECEIVED] Error: " << error.message() << std::endl;
-            throw -3;
-        }  
-          
-        std::cout << "[DATA_RECEIVED] Appending " << bytes_transferred << " bytes to buffer." << std::endl;
-        for (unsigned int i = 0; i < bytes_transferred; ++i) {
-            serial_read_data += read_buffer[i];
-        }     
-
-        //std::cout << "Bytes_transferred: \n" << bytes_transferred << std::endl;
-        //std::cout << "\nSerial Read Data:\n" << serial_read_data  << std::endl;
-
-        serial_data_read_complete = true;
-        std::cout << "[DATA_RECEIVED] Buffer length now: " << serial_read_data.size() << std::endl;
-    }
-    catch (const std::exception &e)
-    {
-        std::cout << "[DATA_RECEIVED] Exception: " << e.what() << std::endl;
-        // throw -1;
+        catch (const std::exception &e)
+        {
+            std::cout << "[DATA_RECEIVED] Exception: " << e.what() << std::endl;
+            throw -1;
+        }
     }
 
-    mutex.unlock();
     std::cout << "[DATA_RECEIVED] Mutex released." << std::endl;
 
     // prevent io_service from returning due to lack of work    
