@@ -52,6 +52,7 @@
         "csignal": "cpp",
         "forward_list": "cpp",
         "iomanip": "cpp",
-        "atomic": "cpp"
+        "atomic": "cpp",
+        "thread": "cpp"
     }
 }

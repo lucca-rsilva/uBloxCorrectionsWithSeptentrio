@@ -1,3 +1,7 @@
+/*
+To run this for the first time, please first run the original main_old.cpp to ensure 
+Mosaic is configured correctly, and save configurations via its web interface pop-up.
+*/
 #include <iostream>
 #include <thread>
 #include <queue>
