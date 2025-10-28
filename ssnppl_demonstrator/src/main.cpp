@@ -60,7 +60,7 @@ SafeQueue<std::vector<uint8_t>> queue_spartn;
 SafeQueue<std::vector<uint8_t>> queue_rtcm;
 
 std::atomic<bool> running(true);
-std::mutex ppl_mutex; // Protects all PPL_* calls
+// std::mutex ppl_mutex; // Protects all PPL_* calls
 
 // =============================================================
 // Serial setup helper
@@ -167,7 +167,7 @@ int main() {
 
         // Process Septentrio input
         if (queue_septentrio.try_pop(msg)) {
-            std::lock_guard<std::mutex> lock(ppl_mutex);
+            // std::lock_guard<std::mutex> lock(ppl_mutex);
             ePPL_ReturnStatus ret = PPL_SendRcvrData(msg.data(), msg.size());
             if (ret != ePPL_Success)
                 std::cout << "FAILED TO SEND RCVR DATA" << std::endl;
@@ -177,11 +177,12 @@ int main() {
 
         // Process SPARTN input
         if (queue_spartn.try_pop(msg)) {
-            std::lock_guard<std::mutex> lock(ppl_mutex);
+            // std::lock_guard<std::mutex> lock(ppl_mutex);
             ePPL_ReturnStatus ret = PPL_SendSpartn(msg.data(), msg.size());
             if (ret != ePPL_Success) {
                 std::cout << "FAILED TO SEND SPARTN SERIAL INPUT DATA: " << ret << std::endl;
             } else {
+                std::cout << "\nNew SPARTN Serial Message reveiced. Message Size: " << msg.size() << std::endl;
                 std::array<uint8_t, PPL_MAX_RTCM_BUFFER> rtcm_buf;
                 uint32_t rtcm_size = 0;
                 PPL_GetRTCMOutput(rtcm_buf.data(), PPL_MAX_RTCM_BUFFER, &rtcm_size);
