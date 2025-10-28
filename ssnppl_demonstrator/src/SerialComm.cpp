@@ -119,19 +119,20 @@ void SerialPort::async_read_some (void)
             This creates a function object that can be passed as an argument to the boost::thread constructor. 
             The boost::thread constructor creates a new thread of execution that runs the run function with the io_service object as an argument.   
         */
-        boost::thread t(boost::bind(&boost::asio::io_service::run, &io_service));
-        std::cout << "[ASYNC] io_service thread created, thread ID: " << t.get_id() << std::endl;
-
-        // But also wrap the io_service.run() call:
-        io_service_thread = boost::thread([this]() {
-            std::cout << "[IO_SERVICE] Thread starting..." << std::endl;
+       
+        // Create thread with lambda to add logging
+        boost::thread t([this]() {
+            std::cout << "[IO_SERVICE] Thread STARTING, about to call run()..." << std::endl;
             try {
                 io_service.run();
-                std::cout << "[IO_SERVICE] io_service.run() EXITED!" << std::endl;
+                std::cout << "[IO_SERVICE] *** run() RETURNED! Thread exiting! ***" << std::endl;
             } catch (std::exception& e) {
-                std::cout << "[IO_SERVICE] Exception: " << e.what() << std::endl;
+                std::cout << "[IO_SERVICE] Exception in run(): " << e.what() << std::endl;
             }
         });
+        
+        t.detach(); // Explicitly detach so we don't terminate
+        std::cout << "[ASYNC] io_service thread detached." << std::endl;
     }
     catch (const std::exception &e)
     {
