@@ -123,7 +123,7 @@ void thread_read_serial(const char* device, int baudrate, SafeQueue<std::vector<
                 auto now = std::chrono::steady_clock::now();
                 auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(now - last_rx).count();
                 if (elapsed > 10) {
-                    std::cerr << "No serial data from " << device << " for " << elapsed << "s, reopening...\n";
+                    std::cerr << "\n[WARNING] No serial data from " << device << " for " << elapsed << "s, reopening...\n\n";
                     close(fd);
                     break;  // break inner loop to reopen
                 }
@@ -161,7 +161,7 @@ void thread_write_rtcm() {
 
                 std::cout << std::endl;
 
-                std::cout << "RTCM out: " << written << " bytes\n";
+                std::cout << "RTCM out: " << written << " bytes\n\n";
             }
         }
     }
