@@ -18,6 +18,11 @@ Mosaic is configured correctly, and save configurations via its web interface po
 #include <PPL_PublicInterface.h>
 
 // =============================================================
+// Defines
+// =============================================================
+#define SERIAL_TIMEOUT 6 // seconds
+
+// =============================================================
 // Thread-safe queue template
 // =============================================================
 template <typename T>
@@ -122,7 +127,7 @@ void thread_read_serial(const char* device, int baudrate, SafeQueue<std::vector<
             } else {
                 auto now = std::chrono::steady_clock::now();
                 auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(now - last_rx).count();
-                if (elapsed > 10) {
+                if (elapsed > SERIAL_TIMEOUT) {
                     std::cerr << "\n[WARNING] No serial data from " << device << " for " << elapsed << "s, reopening...\n\n";
                     close(fd);
                     break;  // break inner loop to reopen
