@@ -103,22 +103,34 @@ int open_serial(const char* device, int baudrate) {
 // Thread functions
 // =============================================================
 void thread_read_serial(const char* device, int baudrate, SafeQueue<std::vector<uint8_t>>* queue) {
-    int fd = open_serial(device, baudrate);
-    if (fd < 0) return;
-
-    uint8_t buf[8092];
     while (running) {
-        int n = read(fd, buf, sizeof(buf));
-        if (n > 0) {
-            std::vector<uint8_t> data(buf, buf + n);
-            queue->push(std::move(data));
-        } else {
-        //     std::this_thread::sleep_for(std::chrono::milliseconds(10));
-            ;
+        int fd = open_serial(device, baudrate);
+        if (fd < 0) {
+            std::this_thread::sleep_for(std::chrono::seconds(2));
+            continue;
+        }
+
+        uint8_t buf[8092];
+        auto last_rx = std::chrono::steady_clock::now();
+
+        while (running) {
+            int n = read(fd, buf, sizeof(buf));
+            if (n > 0) {
+                last_rx = std::chrono::steady_clock::now();
+                std::vector<uint8_t> data(buf, buf + n);
+                queue->push(std::move(data));
+            } else {
+                auto now = std::chrono::steady_clock::now();
+                auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(now - last_rx).count();
+                if (elapsed > 10) {
+                    std::cerr << "No serial data from " << device << " for " << elapsed << "s, reopening...\n";
+                    close(fd);
+                    break;  // break inner loop to reopen
+                }
+                std::this_thread::sleep_for(std::chrono::milliseconds(10));
+            }
         }
     }
-
-    close(fd);
 }
 
 void thread_write_rtcm() {

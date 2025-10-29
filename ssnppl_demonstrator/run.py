@@ -6,7 +6,7 @@ import sys
 
 BINARY = "./ssnppl_demonstrator"
 LOGFILE = "output.log"
-TIMEOUT = 15  # seconds
+TIMEOUT = 10  # seconds
 
 def run_watchdog():
     while True:
